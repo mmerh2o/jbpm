@@ -17,6 +17,8 @@
 package org.jbpm.integration.console;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -65,6 +67,7 @@ import org.drools.runtime.KnowledgeSessionConfiguration;
 import org.drools.runtime.StatefulKnowledgeSession;
 import org.drools.runtime.process.ProcessInstance;
 import org.drools.runtime.process.ProcessRuntimeFactory;
+import org.drools.runtime.process.WorkItemManager;
 import org.jbpm.bpmn2.BPMN2ProcessProviderImpl;
 import org.jbpm.integration.console.shared.GuvnorConnectionUtils;
 import org.jbpm.marshalling.impl.ProcessMarshallerFactoryServiceImpl;
@@ -83,11 +86,19 @@ import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.h2o.orc.jbpm.workitemhandlers.GenericWorkItemHandler;
+
 public class CommandDelegate {
 	private static final Logger logger = LoggerFactory.getLogger(CommandDelegate.class);
 	
     private static StatefulKnowledgeSession ksession;
     
+    /** The Path to the file for loading properties for the generic work items. */
+    private static String genericWorkItemHandlerConfigurationPath = null;
+
+    /** The URL used by default if no URL is set for a workitem in its propertie file. */
+    private String genericWorkItemHandlerDefaultBaseRestURL = null;
+
     public CommandDelegate() {
         getSession();
     }
@@ -101,6 +112,12 @@ public class CommandDelegate {
             } catch (IOException e) {
                 throw new RuntimeException("Could not load jbpm.console.properties", e);
             }
+
+            // Prepare the generic Work Item stuff
+            genericWorkItemHandlerConfigurationPath = jbpmconsoleproperties.getProperty("h2o.files.workitemhandlernames", null);
+            genericWorkItemHandlerDefaultBaseRestURL = jbpmconsoleproperties.getProperty("h2o.urls.genericworkitemhandler.defaultbaseurl", null);
+
+            // Original Code...
             GuvnorConnectionUtils guvnorUtils = new GuvnorConnectionUtils();
             if(guvnorUtils.guvnorExists()) {
             	try {
@@ -301,6 +318,25 @@ public class CommandDelegate {
     }
     
     public ProcessInstanceLog startProcess(String processId, Map<String, Object> parameters) {
+        // Refresh the generic work items
+        if (genericWorkItemHandlerConfigurationPath != null) {
+            try {
+                Properties genericHandlerProps = new Properties();
+                genericHandlerProps.load(new FileInputStream(genericWorkItemHandlerConfigurationPath));
+                for (Entry<Object, Object> entry : genericHandlerProps.entrySet()) {
+                    // adding each work item handler which is not already loaded
+                    WorkItemManager manager = ksession.getWorkItemManager();
+                    String value = (String) entry.getValue();
+                    manager.registerWorkItemHandler((String) entry.getKey(), new GenericWorkItemHandler(
+                            value == null || value.length() == 0 ? genericWorkItemHandlerDefaultBaseRestURL : value));
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         long processInstanceId = ksession.startProcess(processId, parameters).getId();
         return ProcessInstanceDbLog.findProcessInstance(processInstanceId);
     }
