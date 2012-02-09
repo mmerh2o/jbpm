@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import javax.persistence.EntityManagerFactory;
@@ -89,8 +90,8 @@ import org.slf4j.LoggerFactory;
 import de.h2o.orc.jbpm.workitemhandlers.GenericWorkItemHandler;
 
 public class CommandDelegate {
-	private static final Logger logger = LoggerFactory.getLogger(CommandDelegate.class);
-	
+        private static final Logger logger = LoggerFactory.getLogger(CommandDelegate.class);
+        
     private static StatefulKnowledgeSession ksession;
     
     /** The Path to the file for loading properties for the generic work items. */
@@ -120,29 +121,29 @@ public class CommandDelegate {
             // Original Code...
             GuvnorConnectionUtils guvnorUtils = new GuvnorConnectionUtils();
             if(guvnorUtils.guvnorExists()) {
-            	try {
-            		ResourceChangeScannerConfiguration sconf = ResourceFactory.getResourceChangeScannerService().newResourceChangeScannerConfiguration();
-					sconf.setProperty( "drools.resource.scanner.interval", "10" );
-					ResourceFactory.getResourceChangeScannerService().configure( sconf );
-					ResourceFactory.getResourceChangeScannerService().start();
-					ResourceFactory.getResourceChangeNotifierService().start();
-					KnowledgeAgentConfiguration aconf = KnowledgeAgentFactory.newKnowledgeAgentConfiguration();
-					aconf.setProperty("drools.agent.newInstance", "false");
-					KnowledgeAgent kagent = KnowledgeAgentFactory.newKnowledgeAgent("Guvnor default", aconf);
-					kagent.applyChangeSet(ResourceFactory.newReaderResource(guvnorUtils.createChangeSet()));
-					kbase = kagent.getKnowledgeBase();
-				} catch (Throwable t) {
-					logger.error("Could not load processes from Guvnor: " + t.getMessage());
-				}
+                try {
+                        ResourceChangeScannerConfiguration sconf = ResourceFactory.getResourceChangeScannerService().newResourceChangeScannerConfiguration();
+                                        sconf.setProperty( "drools.resource.scanner.interval", "10" );
+                                        ResourceFactory.getResourceChangeScannerService().configure( sconf );
+                                        ResourceFactory.getResourceChangeScannerService().start();
+                                        ResourceFactory.getResourceChangeNotifierService().start();
+                                        KnowledgeAgentConfiguration aconf = KnowledgeAgentFactory.newKnowledgeAgentConfiguration();
+                                        aconf.setProperty("drools.agent.newInstance", "false");
+                                        KnowledgeAgent kagent = KnowledgeAgentFactory.newKnowledgeAgent("Guvnor default", aconf);
+                                        kagent.applyChangeSet(ResourceFactory.newReaderResource(guvnorUtils.createChangeSet()));
+                                        kbase = kagent.getKnowledgeBase();
+                                } catch (Throwable t) {
+                                        logger.error("Could not load processes from Guvnor: " + t.getMessage());
+                                }
             } else {
-            	logger.warn("Could not connect to Guvnor.");
+                logger.warn("Could not connect to Guvnor.");
             }
             if (kbase == null) {
                 kbase = KnowledgeBaseFactory.newKnowledgeBase();
             }
             
             String directory = System.getProperty("jbpm.console.directory") == null ? jbpmconsoleproperties.getProperty("jbpm.console.directory") :
-            	System.getProperty("jbpm.console.directory");
+                System.getProperty("jbpm.console.directory");
             if (directory == null || directory.length() < 1 ) {
                 logger.error("jbpm.console.directory property not found");
             } else {
@@ -197,11 +198,11 @@ public class CommandDelegate {
                             throw e;
                         }
                     } else {
-                    	logger.error("Error loading session data: " + cause);
+                        logger.error("Error loading session data: " + cause);
                         throw e;
                     }
                 } else {
-                	logger.error("Error loading session data: " + e.getMessage());
+                        logger.error("Error loading session data: " + e.getMessage());
                     throw e;
                 }
             }
@@ -215,9 +216,9 @@ public class CommandDelegate {
                     "Human Task", handler);
                 handler.connect();
             } else if ("Local".equals(TaskManagement.TASK_SERVICE_STRATEGY)) {
-				TaskService taskService = HumanTaskService.getService();
-	            SyncWSHumanTaskHandler handler = new SyncWSHumanTaskHandler(new LocalTaskService(taskService.createSession()), ksession);
-	            ksession.getWorkItemManager().registerWorkItemHandler("Human Task", handler);
+                                TaskService taskService = HumanTaskService.getService();
+                    SyncWSHumanTaskHandler handler = new SyncWSHumanTaskHandler(new LocalTaskService(taskService.createSession()), ksession);
+                    ksession.getWorkItemManager().registerWorkItemHandler("Human Task", handler);
             }
             final org.drools.event.AgendaEventListener agendaEventListener = new org.drools.event.AgendaEventListener() {
                 public void activationCreated(ActivationCreatedEvent event,
